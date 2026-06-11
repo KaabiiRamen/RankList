@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RankList — Create & Rank Anything</title>
+<!-- html2canvas for generating downloadable images of the final rankings -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- Google Font -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ===================== Theme / Globals ===================== */
+  :root{
+    --bg: #0f1226;
+    --bg-soft: #171a35;
+    --card: #1e2244;
+    --card-2: #262b54;
+    --accent: #7c5cff;
+    --accent-2: #4cc9f0;
+    --accent-grad: linear-gradient(135deg, #7c5cff 0%, #4cc9f0 100%);
+    --text: #eef0ff;
+    --muted: #a3a8d0;
+    --danger: #ff5d73;
+    --success: #36d399;
+    --radius: 16px;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 10% -10%, #2a2060 0%, transparent 60%),
+                radial-gradient(1000px 500px at 110% 10%, #103a52 0%, transparent 55%),
+                var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  .wrap{ max-width: 1000px; margin: 0 auto; padding: 24px 18px 80px; }
+
+  header.app-head{ text-align:center; padding: 28px 12px 6px; }
+  header.app-head .logo{
+    font-weight: 800; font-size: clamp(28px, 5vw, 44px);
+    letter-spacing: -.5px;
+    background: var(--accent-grad);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header.app-head p{ color: var(--muted); margin: 6px 0 0; }
+
+  /* ===================== Cards / Layout ===================== */
+  .card{
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+  }
+
+  .screen{ display:none; animation: fade .35s ease; }
+  .screen.active{ display:block; }
+  @keyframes fade{ from{ opacity:0; transform: translateY(8px);} to{opacity:1; transform:none;} }
+
+  h2.section-title{ margin: 4px 0 18px; font-size: 22px; }
+  .muted{ color: var(--muted); }
+
+  /* ===================== Buttons ===================== */
+  .btn{
+    appearance:none; border:none; cursor:pointer; font-family:inherit;
+    font-weight:600; font-size:15px; color:#fff;
+    padding: 12px 20px; border-radius: 12px;
+    background: var(--card-2); border:1px solid rgba(255,255,255,.08);
+    transition: transform .12s ease, box-shadow .2s ease, background .2s ease, opacity .2s;
+    display:inline-flex; align-items:center; gap:8px; justify-content:center;
+  }
+  .btn:hover{ transform: translateY(-2px); }
+  .btn:active{ transform: translateY(0); }
+  .btn.primary{ background: var(--accent-grad); border:none; box-shadow: 0 8px 20px rgba(124,92,255,.35); }
+  .btn.success{ background: linear-gradient(135deg,#2bb673,#36d399); border:none; }
+  .btn.danger{ background: transparent; border:1px solid rgba(255,93,115,.5); color: var(--danger); }
+  .btn.ghost{ background: transparent; border:1px solid rgba(255,255,255,.15); }
+  .btn.block{ width:100%; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; }
+  .btn.small{ padding:8px 12px; font-size:13px; border-radius:10px; }
+
+  .row{ display:flex; gap:12px; flex-wrap:wrap; }
+  .row.between{ justify-content:space-between; align-items:center; }
+  .row.end{ justify-content:flex-end; }
+  .grow{ flex:1; }
+
+  /* ===================== Home ===================== */
+  .home-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-top:10px; }
+  .home-tile{
+    cursor:pointer; text-align:center; padding:42px 24px;
+    border:1px solid rgba(255,255,255,.08);
+    transition: transform .15s ease, border-color .2s;
+  }
+  .home-tile:hover{ transform: translateY(-4px); border-color: var(--accent); }
+  .home-tile .ico{ font-size:46px; margin-bottom:10px; }
+  .home-tile h3{ margin:6px 0; font-size:20px; }
+  @media(max-width:680px){ .home-grid{ grid-template-columns:1fr; } }
+
+  /* ===================== Forms ===================== */
+  label.field{ display:block; margin-bottom:12px; }
+  label.field span{ display:block; font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:500; }
+  input[type="text"], input[type="number"], textarea{
+    width:100%; padding:11px 13px; border-radius:10px;
+    background: var(--bg-soft); color:var(--text);
+    border:1px solid rgba(255,255,255,.1); font-family:inherit; font-size:14px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  input:focus, textarea:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(124,92,255,.2); }
+  textarea{ resize:vertical; min-height:46px; }
+
+  .add-form{ background:var(--card-2); border-radius:14px; padding:18px; margin-bottom:20px; }
+  .add-grid{ display:grid; grid-template-columns: 1.2fr 1.5fr 1.5fr auto; gap:12px; align-items:end; }
+  @media(max-width:760px){ .add-grid{ grid-template-columns:1fr; } }
+
+  /* Entry preview list */
+  .entry-list{ display:grid; gap:12px; }
+  .entry-item{
+    display:flex; gap:14px; align-items:center;
+    background: var(--card-2); border-radius:14px; padding:12px;
+    border:1px solid rgba(255,255,255,.06);
+  }
+  .entry-thumb{
+    width:64px; height:64px; border-radius:10px; object-fit:cover; flex-shrink:0;
+    background:#0d1030; border:1px solid rgba(255,255,255,.08);
+  }
+  .entry-thumb.placeholder{ display:flex; align-items:center; justify-content:center; font-size:24px; color:var(--muted); }
+  .entry-meta{ flex:1; min-width:0; }
+  .entry-meta h4{ margin:0 0 3px; font-size:16px; }
+  .entry-meta p{ margin:0; font-size:13px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; }
+  .entry-actions{ display:flex; gap:6px; flex-shrink:0; }
+
+  /* ===================== Method selection ===================== */
+  .method-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:680px){ .method-grid{ grid-template-columns:1fr; } }
+  .method{
+    cursor:pointer; padding:20px; border:1px solid rgba(255,255,255,.08);
+    transition: transform .15s, border-color .2s; position:relative;
+  }
+  .method:hover{ transform:translateY(-3px); border-color:var(--accent); }
+  .method h3{ margin:0 0 8px; font-size:18px; display:flex; align-items:center; gap:8px; }
+  .method .time{ font-size:12px; color:var(--accent-2); font-weight:600; margin-top:10px; }
+  .method p{ font-size:13px; color:var(--muted); margin:0; }
+
+  /* ===================== Pairwise ===================== */
+  .progress-bar{ height:8px; border-radius:99px; background:var(--bg-soft); overflow:hidden; margin:14px 0 22px; }
+  .progress-bar > div{ height:100%; background:var(--accent-grad); width:0; transition:width .3s; }
+  .vs-grid{ display:grid; grid-template-columns:1fr auto 1fr; gap:16px; align-items:stretch; }
+  @media(max-width:620px){ .vs-grid{ grid-template-columns:1fr; } .vs-mid{ order:0; } }
+  .vs-card{
+    cursor:pointer; text-align:center; padding:20px; border-radius:16px;
+    background:var(--card-2); border:2px solid rgba(255,255,255,.08);
+    transition: transform .15s, border-color .2s, box-shadow .2s;
+  }
+  .vs-card:hover{ transform:translateY(-4px); border-color:var(--accent); box-shadow:0 10px 24px rgba(124,92,255,.25); }
+  .vs-card img{ width:100%; max-width:200px; height:170px; object-fit:cover; border-radius:12px; margin:0 auto 12px; display:block; background:#0d1030; }
+  .vs-card .ph{ width:100%; max-width:200px; height:170px; border-radius:12px; margin:0 auto 12px; display:flex; align-items:center; justify-content:center; font-size:42px; background:#0d1030; color:var(--muted); }
+  .vs-card h3{ margin:0 0 6px; font-size:18px; }
+  .vs-card p{ margin:0; font-size:13px; color:var(--muted); }
+  .vs-mid{ display:flex; align-items:center; justify-content:center; font-weight:800; color:var(--muted); font-size:20px; }
+  .tie-row{ text-align:center; margin-top:18px; }
+
+  /* ===================== Linear scale ===================== */
+  .scale-item{ display:flex; gap:14px; align-items:center; background:var(--card-2); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .scale-item .num-wrap{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  .scale-item input[type="range"]{ width:160px; accent-color:var(--accent); }
+  .scale-val{ width:54px; text-align:center; font-weight:700; font-size:16px; color:var(--accent-2); }
+  @media(max-width:560px){ .scale-item{ flex-wrap:wrap; } .scale-item input[type="range"]{ width:100%; } }
+
+  /* ===================== Drag & Drop ===================== */
+  .dnd-wrap{ display:grid; grid-template-columns: 56px 1fr; gap:14px; }
+  .dnd-positions{ display:flex; flex-direction:column; gap:10px; }
+  .dnd-pos{
+    height:74px; display:flex; align-items:center; justify-content:center;
+    font-weight:800; color:var(--accent-2); background:var(--bg-soft);
+    border-radius:12px; border:1px solid rgba(255,255,255,.06);
+  }
+  .dnd-items{ display:flex; flex-direction:column; gap:10px; }
+  .dnd-item{
+    height:74px; display:flex; align-items:center; gap:12px; padding:0 14px;
+    background:var(--card-2); border-radius:12px; border:1px solid rgba(255,255,255,.08);
+    cursor:grab; transition: box-shadow .15s, transform .05s, opacity .15s;
+    user-select:none;
+  }
+  .dnd-item:active{ cursor:grabbing; }
+  .dnd-item.dragging{ opacity:.4; }
+  .dnd-item.over{ box-shadow:0 0 0 2px var(--accent) inset; }
+  .dnd-item img{ width:50px; height:50px; border-radius:8px; object-fit:cover; background:#0d1030; }
+  .dnd-item .ph{ width:50px; height:50px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#0d1030; color:var(--muted); }
+  .dnd-handle{ margin-left:auto; color:var(--muted); font-size:20px; }
+
+  /* ===================== Results ===================== */
+  #resultsCanvasTarget{ background: var(--bg); padding:8px; border-radius:14px; }
+  .result-item{
+    display:flex; gap:16px; align-items:center;
+    background:var(--card-2); border-radius:14px; padding:14px; margin-bottom:12px;
+    border:1px solid rgba(255,255,255,.06);
+  }
+  .result-rank{
+    width:54px; height:54px; flex-shrink:0; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:22px; color:#fff; background:var(--accent-grad);
+  }
+  .result-item.top1 .result-rank{ background:linear-gradient(135deg,#ffd700,#ffae00); color:#3a2c00; }
+  .result-item.top2 .result-rank{ background:linear-gradient(135deg,#d8d8e8,#a8a8c0); color:#23233a; }
+  .result-item.top3 .result-rank{ background:linear-gradient(135deg,#cd7f32,#e3a063); color:#2a1700; }
+  .result-img{ width:70px; height:70px; border-radius:10px; object-fit:cover; background:#0d1030; flex-shrink:0; }
+  .result-img.ph{ display:flex; align-items:center; justify-content:center; font-size:28px; color:var(--muted); }
+  .result-meta h4{ margin:0 0 4px; font-size:18px; }
+  .result-meta p{ margin:0; font-size:14px; color:var(--muted); }
+
+  .footer-note{ text-align:center; color:var(--muted); font-size:12px; margin-top:30px; }
+  .hidden{ display:none !important; }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--card); color:var(--text); padding:12px 20px; border-radius:12px;
+    border:1px solid rgba(255,255,255,.1); box-shadow:var(--shadow);
+    opacity:0; pointer-events:none; transition:all .3s; z-index:100;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<header class="app-head">
+  <div class="logo">RankList</div>
+  <p>Create, compare and rank anything — then share your verdict.</p>
+</header>
+<div class="wrap">
+  <!-- ============================================================= -->
+  <!-- SCREEN 1: HOME                                                -->
+  <!-- ============================================================= -->
+  <section id="screen-home" class="screen active">
+    <div class="home-grid">
+      <div class="card home-tile" onclick="startNewRanking()">
+        <div class="ico">✨</div>
+        <h3>Create New Ranking</h3>
+        <p class="muted">Add your own items with names, descriptions and images.</p>
+      </div>
+      <div class="card home-tile" onclick="document.getElementById('importFile').click()">
+        <div class="ico">📂</div>
+        <h3>Import Ranking</h3>
+        <p class="muted">Load a previously exported file to rank or edit.</p>
+      </div>
+    </div>
+    <input type="file" id="importFile" accept="application/json,.json" class="hidden" onchange="handleImport(event)">
+  </section>
+  <!-- ============================================================= -->
+  <!-- SCREEN 2: ENTRY CREATION                                      -->
+  <!-- ============================================================= -->
+  <section id="screen-entries" class="screen">
+    <div class="card">
+      <div class="row between">
+        <h2 class="section-title">Build Your List</h2>
+        <button class="btn ghost small" onclick="goHome()">← Home</button>
+      </div>
+Copy  <!-- Add / edit entry form -->
+  <div class="add-form">
+    <div class="add-grid">
+      <label class="field" style="margin:0">
+        <span>Name *</span>
+        <input type="text" id="inName" placeholder="e.g. Pizza">
+      </label>
+      <label class="field" style="margin:0">
+        <span>Description</span>
+        <input type="text" id="inDesc" placeholder="Optional details">
+      </label>
+      <label class="field" style="margin:0">
+        <span>Image URL</span>
+        <input type="text" id="inImg" placeholder="https://...">
+      </label>
+      <button class="btn primary" id="addBtn" onclick="saveEntry()">+ Add</button>
+    </div>
+    <div class="muted" id="editHint" style="font-size:12px;margin-top:8px;display:none;">
+      Editing entry — <a href="#" onclick="cancelEdit();return false;" style="color:var(--accent-2)">cancel</a>
+    </div>
+  </div>
+
+  <div class="entry-list" id="entryList"></div>
+  <p class="muted" id="emptyMsg" style="text-align:center;padding:20px 0;">No entries yet. Add at least 2 to continue.</p>
+
+  <div class="row between" style="margin-top:22px;">
+    <button class="btn ghost" onclick="exportEntries()">⬇ Export Entries</button>
+    <button class="btn primary" id="toRankingBtn" onclick="showMethodSelect()" disabled>Continue to Ranking →</button>
+  </div>
+</div>
+  </section>
+  <!-- ============================================================= -->
+  <!-- SCREEN 2b: IMPORT REVIEW (modify or proceed)                  -->
+  <!-- ============================================================= -->
+  <section id="screen-import" class="screen">
+    <div class="card" style="text-align:center;">
+      <div class="ico" style="font-size:42px;">✅</div>
+      <h2 class="section-title">Import Successful</h2>
+      <p class="muted" id="importSummary"></p>
+      <div class="row" style="justify-content:center;margin-top:18px;">
+        <button class="btn ghost" onclick="showEntries()">✏ Modify Entries</button>
+        <button class="btn primary" onclick="showMethodSelect()">Proceed to Ranking →</button>
+      </div>
+    </div>
+  </section>
+  <!-- ============================================================= -->
+  <!-- SCREEN 3: METHOD SELECTION                                    -->
+  <!-- ============================================================= -->
+  <section id="screen-methods" class="screen">
+    <div class="card">
+      <div class="row between">
+        <h2 class="section-title">Choose a Ranking Method</h2>
+        <button class="btn ghost small" onclick="showEntries()">← Back</button>
+      </div>
+      <div class="method-grid">
+        <div class="card method" onclick="startMethod('roundrobin')">
+          <h3>🔄 Round-Robin Pairwise</h3>
+          <p>Compare every possible pair of items head-to-head. The most thorough and accurate method.</p>
+          <div class="time" id="timeRR">~ time</div>
+        </div>
+        <div class="card method" onclick="startMethod('smart')">
+          <h3>⚡ Smart Pairwise</h3>
+          <p>A merge-sort powered comparison that reaches a full ranking with far fewer matchups.</p>
+          <div class="time" id="timeSmart">~ time</div>
+        </div>
+        <div class="card method" onclick="startMethod('scale')">
+          <h3>🎚 Linear Numeric Scale</h3>
+          <p>Rate each item from 0–10 (0.5 steps). Any ties are settled with quick pairwise duels.</p>
+          <div class="time" id="timeScale">~ time</div>
+        </div>
+        <div class="card method" onclick="startMethod('dnd')">
+          <h3>✋ Drag &amp; Drop</h3>
+          <p>Drag items into numbered slots from best to worst. Fastest, but you decide the order yourself.</p>
+          <div class="time" id="timeDnd">~ time</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- ============================================================= -->
+  <!-- SCREEN 4a: PAIRWISE (used by roundrobin & smart)              -->
+  <!-- ============================================================= -->
+  <section id="screen-pairwise" class="screen">
+    <div class="card">
+      <div class="row between">
+        <h2 class="section-title" id="pairwiseTitle">Which do you prefer?</h2>
+        <button class="btn ghost small" onclick="showMethodSelect()">✕ Cancel</button>
+      </div>
+      <div class="muted" id="pairwiseProgressText">Comparison 1 of N</div>
+      <div class="progress-bar"><div id="pairwiseProgress"></div></div>
+Copy  <div class="vs-grid">
+    <div class="vs-card" id="vsA" onclick="choosePair(0)"></div>
+    <div class="vs-mid">VS</div>
+    <div class="vs-card" id="vsB" onclick="choosePair(1)"></div>
+  </div>
+  <div class="tie-row">
+    <button class="btn ghost small" onclick="choosePair('tie')">🤝 Equal / No preference</button>
+  </div>
+</div>
+  </section>
+  <!-- ============================================================= -->
+  <!-- SCREEN 4b: LINEAR SCALE                                       -->
+  <!-- ============================================================= -->
+  <section id="screen-scale" class="screen">
+    <div class="card">
+      <div class="row between">
+        <h2 class="section-title">Rate Each Item (0–10)</h2>
+        <button class="btn ghost small" onclick="showMethodSelect()">← Back</button>
+      </div>
+      <div id="scaleList"></div>
+      <div class="row end" style="margin-top:18px;">
+        <button class="btn primary" onclick="finishScale()">Finish Rating →</button>
+      </div>
+    </div>
+  </section>
+  <!-- ============================================================= -->
+  <!-- SCREEN 4c: DRAG & DROP                                        -->
+  <!-- ============================================================= -->
+  <section id="screen-dnd" class="screen">
+    <div class="card">
+      <div class="row between">
+        <h2 class="section-title">Drag Into Order (1 = best)</h2>
+        <button class="btn ghost small" onclick="showMethodSelect()">← Back</button>
+      </div>
+      <p class="muted">Drag the items on the right so the order matches your preference.</p>
+      <div class="dnd-wrap">
+        <div class="dnd-positions" id="dndPositions"></div>
+        <div class="dnd-items" id="dndItems"></div>
+      </div>
+      <div class="row end" style="margin-top:18px;">
+        <button class="btn primary" onclick="finishDnd()">Confirm Ranking →</button>
+      </div>
+    </div>
+  </section>
+  <!-- ============================================================= -->
+  <!-- SCREEN 5: RESULTS                                             -->
+  <!-- ============================================================= -->
+  <section id="screen-results" class="screen">
+    <div class="card">
+      <div class="row between">
+        <h2 class="section-title">🏆 Final Rankings</h2>
+        <button class="btn ghost small" onclick="goHome()">Start Over</button>
+      </div>
+      <div id="resultsCanvasTarget">
+        <div id="resultsList"></div>
+      </div>
+      <div class="row" style="margin-top:22px;">
+        <button class="btn success" onclick="downloadImage()">🖼 Download as Image</button>
+        <button class="btn ghost" onclick="exportResults()">⬇ Download as File</button>
+        <button class="btn ghost" onclick="showMethodSelect()">↻ Re-rank</button>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+/* =====================================================================
+   STATE
+   ===================================================================== */
+let entries = [];          // [{id, name, description, imageUrl}]
+let results = [];          // ranked array of entry objects
+let editingId = null;      // entry currently being edited
+let uid = 1;               // simple id generator
+
+/* =====================================================================
+   UTILITIES
+   ===================================================================== */
+function $(id){ return document.getElementById(id); }
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+function escapeHtml(str){
+  return (str || '').replace(/[&<>"']/g, c => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+  ));
+}
+
+// Build a thumbnail element markup (image or placeholder)
+function thumbHtml(entry, cls){
+  if(entry.imageUrl && entry.imageUrl.trim()){
+    return `<img class="${cls}" src="${escapeHtml(entry.imageUrl)}" alt=""
+              onerror="this.outerHTML='<div class=\\'${cls} placeholder\\'>🖼</div>'">`;
+  }
+  return `<div class="${cls} placeholder">🖼</div>`;
+}
+
+/* =====================================================================
+   NAVIGATION HELPERS
+   ===================================================================== */
+function goHome(){ showScreen('screen-home'); }
+
+function startNewRanking(){
+  entries = [];
+  results = [];
+  renderEntries();
+  showScreen('screen-entries');
+}
+
+function showEntries(){ renderEntries(); showScreen('screen-entries'); }
+
+function showMethodSelect(){
+  if(entries.length < 2){ toast('Add at least 2 entries first.'); return; }
+  updateTimeEstimates();
+  showScreen('screen-methods');
+}
+
+/* =====================================================================
+   ENTRY CREATION
+   ===================================================================== */
+function saveEntry(){
+  const name = $('inName').value.trim();
+  const desc = $('inDesc').value.trim();
+  const img  = $('inImg').value.trim();
+
+  if(!name){ toast('Name is required.'); $('inName').focus(); return; }
+
+  if(editingId !== null){
+    // Update existing entry
+    const e = entries.find(x => x.id === editingId);
+    if(e){ e.name = name; e.description = desc; e.imageUrl = img; }
+    cancelEdit();
+  } else {
+    // Add new entry
+    entries.push({ id: uid++, name, description: desc, imageUrl: img });
+  }
+
+  // reset form
+  $('inName').value = ''; $('inDesc').value = ''; $('inImg').value = '';
+  $('inName').focus();
+  renderEntries();
+}
+
+function editEntry(id){
+  const e = entries.find(x => x.id === id);
+  if(!e) return;
+  editingId = id;
+  $('inName').value = e.name;
+  $('inDesc').value = e.description;
+  $('inImg').value = e.imageUrl;
+  $('addBtn').textContent = '✓ Save';
+  $('editHint').style.display = 'block';
+  $('inName').focus();
+}
+
+function cancelEdit(){
+  editingId = null;
+  $('addBtn').textContent = '+ Add';
+  $('editHint').style.display = 'none';
+  $('inName').value = ''; $('inDesc').value = ''; $('inImg').value = '';
+}
+
+function deleteEntry(id){
+  entries = entries.filter(x => x.id !== id);
+  if(editingId === id) cancelEdit();
+  renderEntries();
+}
+
+function renderEntries(){
+  const list = $('entryList');
+  list.innerHTML = '';
+  $('emptyMsg').style.display = entries.length ? 'none' : 'block';
+
+  entries.forEach(e => {
+    const div = document.createElement('div');
+    div.className = 'entry-item';
+    div.innerHTML = `
+      ${thumbHtml(e, 'entry-thumb')}
+      <div class="entry-meta">
+        <h4>${escapeHtml(e.name)}</h4>
+        <p>${escapeHtml(e.description) || '<em>No description</em>'}</p>
+      </div>
+      <div class="entry-actions">
+        <button class="btn ghost small" onclick="editEntry(${e.id})">Edit</button>
+        <button class="btn danger small" onclick="deleteEntry(${e.id})">Delete</button>
+      </div>`;
+    list.appendChild(div);
+  });
+
+  $('toRankingBtn').disabled = entries.length < 2;
+}
+
+// Allow Enter key to add entry quickly
+['inName','inDesc','inImg'].forEach(id=>{
+  document.addEventListener('DOMContentLoaded', ()=>{
+    $(id).addEventListener('keydown', e=>{ if(e.key === 'Enter') saveEntry(); });
+  });
+});
+
+/* =====================================================================
+   EXPORT / IMPORT
+   ===================================================================== */
+function downloadJSON(obj, filename){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportEntries(){
+  if(!entries.length){ toast('Nothing to export.'); return; }
+  downloadJSON({ type:'ranklist-entries', version:1, entries }, 'ranklist-entries.json');
+  toast('Entries exported!');
+}
+
+function exportResults(){
+  downloadJSON({ type:'ranklist-results', version:1, results }, 'ranklist-results.json');
+  toast('Results exported!');
+}
+
+function handleImport(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      let loaded = [];
+      if(Array.isArray(data.entries)) loaded = data.entries;
+      else if(Array.isArray(data.results)) loaded = data.results;
+      else if(Array.isArray(data)) loaded = data;
+      else throw new Error('Unrecognized format');
+
+      // Normalize and re-assign ids
+      entries = loaded.map(item => ({
+        id: uid++,
+        name: item.name || 'Untitled',
+        description: item.description || '',
+        imageUrl: item.imageUrl || item.image || ''
+      }));
+
+      if(entries.length < 1){ toast('No entries found in file.'); return; }
+      $('importSummary').textContent = `${entries.length} entries loaded. Modify them or jump straight to ranking.`;
+      showScreen('screen-import');
+    }catch(err){
+      toast('Could not read that file.');
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // reset so same file can be re-imported
+}
+
+/* =====================================================================
+   TIME ESTIMATES
+   ===================================================================== */
+function updateTimeEstimates(){
+  const n = entries.length;
+  const rrPairs = n * (n - 1) / 2;
+  const smartPairs = Math.max(1, Math.round(n * Math.log2(Math.max(2,n))));
+  const fmt = secs => secs < 60 ? `~${Math.max(5,Math.round(secs))} sec` : `~${Math.round(secs/60)} min`;
+  $('timeRR').textContent   = `${rrPairs} comparisons · ${fmt(rrPairs*3)}`;
+  $('timeSmart').textContent= `~${smartPairs} comparisons · ${fmt(smartPairs*3)}`;
+  $('timeScale').textContent= `${n} ratings · ${fmt(n*4)}`;
+  $('timeDnd').textContent  = `${n} items · ${fmt(n*3)}`;
+}
+
+/* =====================================================================
+   METHOD DISPATCH
+   ===================================================================== */
+function startMethod(method){
+  if(method === 'roundrobin') startRoundRobin();
+  else if(method === 'smart')  startSmartPairwise();
+  else if(method === 'scale')  startScale();
+  else if(method === 'dnd')    startDnd();
+}
+
+/* =====================================================================
+   PAIRWISE RENDERING (shared by round-robin & smart & tiebreak)
+   ===================================================================== */
+function renderVsCard(targetId, entry){
+  const el = $(targetId);
+  const img = (entry.imageUrl && entry.imageUrl.trim())
+    ? `<img src="${escapeHtml(entry.imageUrl)}" alt="" onerror="this.outerHTML='<div class=\\'ph\\'>🖼</div>'">`
+    : `<div class="ph">🖼</div>`;
+  el.innerHTML = `
+    ${img}
+    <h3>${escapeHtml(entry.name)}</h3>
+    <p>${escapeHtml(entry.description)}</p>`;
+}
+
+/* =====================================================================
+   METHOD 1: ROUND-ROBIN PAIRWISE
+   Compare every pair, tally wins, sort by wins (Borda-style fallback).
+   ===================================================================== */
+let rrPairs = [], rrIndex = 0, rrWins = {};
+
+function startRoundRobin(){
+  rrPairs = [];
+  rrWins = {};
+  entries.forEach(e => rrWins[e.id] = 0);
+  for(let i=0;i<entries.length;i++)
+    for(let j=i+1;j<entries.length;j++)
+      rrPairs.push([entries[i], entries[j]]);
+  // shuffle for variety
+  rrPairs.sort(()=>Math.random()-0.5);
+  rrIndex = 0;
+  pairwiseMode = 'rr';
+  $('pairwiseTitle').textContent = 'Which do you prefer?';
+  showScreen('screen-pairwise');
+  showRRPair();
+}
+
+function showRRPair(){
+  if(rrIndex >= rrPairs.length){ finishRoundRobin(); return; }
+  const [a,b] = rrPairs[rrIndex];
+  renderVsCard('vsA', a);
+  renderVsCard('vsB', b);
+  const pct = (rrIndex / rrPairs.length) * 100;
+  $('pairwiseProgress').style.width = pct + '%';
+  $('pairwiseProgressText').textContent = `Comparison ${rrIndex+1} of ${rrPairs.length}`;
+}
+
+function finishRoundRobin(){
+  // Sort entries by wins descending; ties broken by head-to-head random
+  results = [...entries].sort((a,b)=> (rrWins[b.id]||0) - (rrWins[a.id]||0));
+  showResults();
+}
+
+/* =====================================================================
+   METHOD 3: SMART PAIRWISE (merge sort with user comparisons)
+   We perform an iterative bottom-up merge sort, asking the user only
+   when two elements must be compared. Far fewer comparisons than RR.
+   Comparisons are async (driven by button clicks), so we use a queue
+   + resume pattern.
+   ===================================================================== */
+let smartResolver = null;       // pending comparison resolver
+let smartTotalEst = 0, smartDone = 0;
+
+function startSmartPairwise(){
+  pairwiseMode = 'smart';
+  $('pairwiseTitle').textContent = 'Which do you prefer?';
+  smartDone = 0;
+  smartTotalEst = Math.max(1, Math.round(entries.length * Math.log2(Math.max(2,entries.length))));
+  showScreen('screen-pairwise');
+  runMergeSort([...entries]).then(sorted => {
+    results = sorted;
+    showResults();
+  });
+}
+
+// Ask the user to compare two entries; returns Promise resolving -1/0/1
+function askComparison(a, b){
+  return new Promise(resolve => {
+    renderVsCard('vsA', a);
+    renderVsCard('vsB', b);
+    smartDone++;
+    const pct = Math.min(99, (smartDone / smartTotalEst) * 100);
+    $('pairwiseProgress').style.width = pct + '%';
+    $('pairwiseProgressText').textContent = `Comparison ${smartDone}` +
+      (smartDone < smartTotalEst ? ` of ~${smartTotalEst}` : '');
+    smartResolver = resolve;
+  });
+}
+
+// Async merge sort
+async function runMergeSort(arr){
+  if(arr.length <= 1) return arr;
+  const mid = Math.floor(arr.length/2);
+  const left = await runMergeSort(arr.slice(0, mid));
+  const right = await runMergeSort(arr.slice(mid));
+  return await merge(left, right);
+}
+
+async function merge(left, right){
+  const out = [];
+  let i=0, j=0;
+  while(i < left.length && j < right.length){
+    const cmp = await askComparison(left[i], right[j]);
+    // cmp = -1 means left preferred (ranks higher), 1 means right preferred
+    if(cmp <= 0){ out.push(left[i++]); }
+    else { out.push(right[j++]); }
+  }
+  while(i < left.length) out.push(left[i++]);
+  while(j < right.length) out.push(right[j++]);
+  return out;
+}
+
+/* =====================================================================
+   SHARED PAIRWISE CLICK HANDLER
+   ===================================================================== */
+let pairwiseMode = 'rr';   // 'rr' | 'smart' | 'tiebreak'
+
+function choosePair(choice){
+  if(pairwiseMode === 'rr'){
+    const [a,b] = rrPairs[rrIndex];
+    if(choice === 0) rrWins[a.id]++;
+    else if(choice === 1) rrWins[b.id]++;
+    else { rrWins[a.id]+=0.5; rrWins[b.id]+=0.5; } // tie
+    rrIndex++;
+    showRRPair();
+  }
+  else if(pairwiseMode === 'smart'){
+    if(!smartResolver) return;
+    const r = smartResolver; smartResolver = null;
+    // choice 0 => left preferred (-1), 1 => right preferred (1), tie => 0
+    r(choice === 0 ? -1 : choice === 1 ? 1 : 0);
+  }
+  else if(pairwiseMode === 'tiebreak'){
+    handleTiebreakChoice(choice);
+  }
+}
+
+/* =====================================================================
+   METHOD 2: LINEAR NUMERIC SCALE
+   ===================================================================== */
+let scaleScores = {};
+
+function startScale(){
+  scaleScores = {};
+  const list = $('scaleList');
+  list.innerHTML = '';
+  entries.forEach(e=>{
+    scaleScores[e.id] = 5;
+    const div = document.createElement('div');
+    div.className = 'scale-item';
+    div.innerHTML = `
+      ${thumbHtml(e, 'entry-thumb')}
+      <div class="entry-meta">
+        <h4>${escapeHtml(e.name)}</h4>
+        <p>${escapeHtml(e.description)}</p>
+      </div>
+      <div class="num-wrap">
+        <input type="range" min="0" max="10" step="0.5" value="5"
+          oninput="updateScale(${e.id}, this.value, this)">
+        <div class="scale-val" id="sval-${e.id}">5.0</div>
+      </div>`;
+    list.appendChild(div);
+  });
+  showScreen('screen-scale');
+}
+
+function updateScale(id, val, el){
+  scaleScores[id] = parseFloat(val);
+  $('sval-'+id).textContent = parseFloat(val).toFixed(1);
+}
+
+function finishScale(){
+  // Sort by score descending
+  let sorted = [...entries].sort((a,b)=> scaleScores[b.id] - scaleScores[a.id]);
+
+  // Detect tie groups (same score, size>1) and resolve via pairwise
+  tieQueue = buildTieGroups(sorted, e => scaleScores[e.id]);
+  scaleSorted = sorted;
+  if(tieQueue.length){
+    startTiebreaks(() => {
+      // After tiebreaks reorder within groups; rebuild final list
+      results = rebuildFromTieResolution(scaleSorted, e => scaleScores[e.id]);
+      showResults();
+    });
+  } else {
+    results = sorted;
+    showResults();
+  }
+}
+
+/* =====================================================================
+   TIEBREAK ENGINE (used by Linear Scale)
+   Resolves equal-score groups with pairwise comparisons among the group.
+   For simplicity each tie group is resolved with a mini round-robin.
+   ===================================================================== */
+let tieQueue = [];          // array of {score, members:[...], pairs:[], idx, wins:{}}
+let tieGroupIdx = 0;
+let tiePairIdx = 0;
+let tieDoneCallback = null;
+let scaleSorted = [];
+
+function buildTieGroups(sorted, scoreFn){
+  const groups = [];
+  let i = 0;
+  while(i < sorted.length){
+    let j = i+1;
+    while(j < sorted.length && scoreFn(sorted[j]) === scoreFn(sorted[i])) j++;
+    if(j - i > 1){
+      const members = sorted.slice(i, j);
+      const pairs = [];
+      for(let a=0;a<members.length;a++)
+        for(let b=a+1;b<members.length;b++)
+          pairs.push([members[a], members[b]]);
+      const wins = {}; members.forEach(m=>wins[m.id]=0);
+      groups.push({ score: scoreFn(sorted[i]), members, pairs, wins });
+    }
+    i = j;
+  }
+  return groups;
+}
+
+function startTiebreaks(callback){
+  tieDoneCallback = callback;
+  tieGroupIdx = 0;
+  tiePairIdx = 0;
+  pairwiseMode = 'tiebreak';
+  $('pairwiseTitle').textContent = 'Tiebreaker — Which is better?';
+  showScreen('screen-pairwise');
+  showTiePair();
+}
+
+function showTiePair(){
+  // advance through groups
+  while(tieGroupIdx < tieQueue.length && tiePairIdx >= tieQueue[tieGroupIdx].pairs.length){
+    tieGroupIdx++; tiePairIdx = 0;
+  }
+  if(tieGroupIdx >= tieQueue.length){ tieDoneCallback(); return; }
+
+  const group = tieQueue[tieGroupIdx];
+  const [a,b] = group.pairs[tiePairIdx];
+  renderVsCard('vsA', a);
+  renderVsCard('vsB', b);
+
+  // overall progress across all tie pairs
+  const totalPairs = tieQueue.reduce((s,g)=>s+g.pairs.length,0);
+  let donePairs = 0;
+  for(let k=0;k<tieGroupIdx;k++) donePairs += tieQueue[k].pairs.length;
+  donePairs += tiePairIdx;
+  $('pairwiseProgress').style.width = (donePairs/totalPairs*100) + '%';
+  $('pairwiseProgressText').textContent =
+    `Tiebreak ${donePairs+1} of ${totalPairs} (score ${group.score.toFixed(1)})`;
+}
+
+function handleTiebreakChoice(choice){
+  const group = tieQueue[tieGroupIdx];
+  const [a,b] = group.pairs[tiePairIdx];
+  if(choice === 0) group.wins[a.id]++;
+  else if(choice === 1) group.wins[b.id]++;
+  else { group.wins[a.id]+=0.5; group.wins[b.id]+=0.5; }
+  tiePairIdx++;
+  showTiePair();
+}
+
+function rebuildFromTieResolution(sorted, scoreFn){
+  // For each tie group, sort members by their win count
+  const final = [];
+  let i = 0;
+  while(i < sorted.length){
+    let j = i+1;
+    while(j < sorted.length && scoreFn(sorted[j]) === scoreFn(sorted[i])) j++;
+    const slice = sorted.slice(i, j);
+    if(slice.length > 1){
+      const group = tieQueue.find(g => g.score === scoreFn(sorted[i]));
+      if(group){
+        slice.sort((a,b)=> (group.wins[b.id]||0) - (group.wins[a.id]||0));
+      }
+    }
+    final.push(...slice);
+    i = j;
+  }
+  return final;
+}
+
+/* =====================================================================
+   METHOD 4: DRAG & DROP
+   ===================================================================== */
+let dndOrder = [];   // current ordered array of entries
+let dragEl = null;
+
+function startDnd(){
+  dndOrder = [...entries];
+  renderDnd();
+  showScreen('screen-dnd');
+}
+
+function renderDnd(){
+  const pos = $('dndPositions');
+  const items = $('dndItems');
+  pos.innerHTML = '';
+  items.innerHTML = '';
+
+  dndOrder.forEach((e, idx)=>{
+    const p = document.createElement('div');
+    p.className = 'dnd-pos';
+    p.textContent = idx + 1;
+    pos.appendChild(p);
+
+    const it = document.createElement('div');
+    it.className = 'dnd-item';
+    it.draggable = true;
+    it.dataset.id = e.id;
+    const img = (e.imageUrl && e.imageUrl.trim())
+      ? `<img src="${escapeHtml(e.imageUrl)}" onerror="this.outerHTML='<div class=\\'ph\\'>🖼</div>'">`
+      : `<div class="ph">🖼</div>`;
+    it.innerHTML = `${img}
+      <div class="entry-meta">
+        <h4>${escapeHtml(e.name)}</h4>
+        <p>${escapeHtml(e.description)}</p>
+      </div>
+      <div class="dnd-handle">⋮⋮</div>`;
+
+    // Drag events
+    it.addEventListener('dragstart', ()=>{ dragEl = it; setTimeout(()=>it.classList.add('dragging'),0); });
+    it.addEventListener('dragend', ()=>{ it.classList.remove('dragging'); commitDndOrder(); });
+    it.addEventListener('dragover', ev=>{
+      ev.preventDefault();
+      const after = ev.clientY > it.getBoundingClientRect().top + it.offsetHeight/2;
+      it.classList.add('over');
+      if(dragEl && dragEl !== it){
+        if(after) it.after(dragEl); else it.before(dragEl);
+      }
+    });
+    it.addEventListener('dragleave', ()=> it.classList.remove('over'));
+    it.addEventListener('drop', ev=>{ ev.preventDefault(); it.classList.remove('over'); });
+
+    items.appendChild(it);
+  });
+
+  // Touch support (basic): allow tapping arrows? Provide up/down via long handle — keep simple with native DnD.
+  enableTouchDnd();
+}
+
+// Read DOM order back into dndOrder
+function commitDndOrder(){
+  const ids = [...$('dndItems').children].map(c => parseInt(c.dataset.id));
+  dndOrder = ids.map(id => entries.find(e => e.id === id));
+  // re-render to refresh position numbers
+  renderDnd();
+}
+
+function finishDnd(){
+  // ensure latest DOM order captured
+  const ids = [...$('dndItems').children].map(c => parseInt(c.dataset.id));
+  results = ids.map(id => entries.find(e => e.id === id));
+  showResults();
+}
+
+/* Minimal touch drag-and-drop fallback for mobile */
+function enableTouchDnd(){
+  const items = $('dndItems');
+  items.querySelectorAll('.dnd-item').forEach(it=>{
+    it.ontouchstart = e=>{
+      const touch = e.touches[0];
+      it._startY = touch.clientY;
+      it.classList.add('dragging');
+    };
+    it.ontouchmove = e=>{
+      e.preventDefault();
+      const touch = e.touches[0];
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      const target = el && el.closest('.dnd-item');
+      if(target && target !== it){
+        const after = touch.clientY > target.getBoundingClientRect().top + target.offsetHeight/2;
+        if(after) target.after(it); else target.before(it);
+      }
+    };
+    it.ontouchend = ()=>{ it.classList.remove('dragging'); commitDndOrder(); };
+  });
+}
+
+/* =====================================================================
+   RESULTS DISPLAY
+   ===================================================================== */
+function showResults(){
+  const list = $('resultsList');
+  list.innerHTML = '';
+  results.forEach((e, idx)=>{
+    const div = document.createElement('div');
+    div.className = 'result-item' + (idx===0?' top1':idx===1?' top2':idx===2?' top3':'');
+    const img = (e.imageUrl && e.imageUrl.trim())
+      ? `<img class="result-img" src="${escapeHtml(e.imageUrl)}" crossorigin="anonymous"
+            onerror="this.outerHTML='<div class=\\'result-img ph\\'>🖼</div>'">`
+      : `<div class="result-img ph">🖼</div>`;
+    div.innerHTML = `
+      <div class="result-rank">${idx+1}</div>
+      ${img}
+      <div class="result-meta">
+        <h4>${escapeHtml(e.name)}</h4>
+        <p>${escapeHtml(e.description) || ''}</p>
+      </div>`;
+    list.appendChild(div);
+  });
+  showScreen('screen-results');
+}
+
+/* =====================================================================
+   DOWNLOAD RESULTS AS IMAGE (html2canvas)
+   ===================================================================== */
+function downloadImage(){
+  const target = $('resultsCanvasTarget');
+  toast('Generating image...');
+  html2canvas(target, {
+    backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#0f1226',
+    scale: 2,
+    useCORS: true,
+    allowTaint: false
+  }).then(canvas=>{
+    const link = document.createElement('a');
+    link.download = 'ranklist-results.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast('Image downloaded!');
+  }).catch(err=>{
+    console.error(err);
+    toast('Image failed (some images may block cross-origin export).');
+  });
+}
+</script>
+</body>
+</html>
